@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>html,body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>audio-events Pipeline</title>
+<meta property="og:title" content="audio-events Pipeline">
+<meta property="og:description" content="An offline pipeline that turns a finished track into a timeline of beats, sections, drum hits, notes and sung words for Fantasynth.">
+<meta property="og:image" content="https://c4rl05.github.io/fantasynth-tools/audio-events/viewer.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -57,6 +61,9 @@ nav.toc li a:hover { background: var(--surface); }
 nav.toc li.sub a { padding-left: 20px; color: var(--muted); font-size: 13px; }
 
 main { min-width: 0; padding-top: 40px; display: grid; gap: 56px; }
+.shot { margin: 8px 0 0; display: grid; gap: 8px; }
+.shot img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
+.shot figcaption { font-size: 13px; color: var(--muted); }
 .titleblock { display: grid; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 28px; }
 .eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
 h1 { font: 700 clamp(34px, 5vw, 50px)/1.02 var(--cond); margin: 0; letter-spacing: -.01em; }
@@ -171,6 +178,7 @@ footer { font: 400 12px/1.5 var(--mono); color: var(--muted); border-top: 1px so
         <span>About <b>1.5 min</b> per track</span>
         <span>Spec <a href="https://github.com/c4rl05/fantasynth-tools/blob/main/audio-events/CONTRACT.md">CONTRACT.md</a> · usage <a href="https://github.com/c4rl05/fantasynth-tools/blob/main/audio-events/README.md">README.md</a></span>
       </div>
+      <figure class="shot"><img src="viewer.png" width="1280" height="640" alt="The audio-events viewer: coloured section bars, word boxes, drum lanes, a piano roll of notes and stem loudness curves under a beat ruler"><figcaption>The viewer on a test track: sections, sung words (text hidden here), vocal onsets, drum lanes, notes and stem curves, with the track renamed.</figcaption></figure>
     </header>
 
     <section id="overview">

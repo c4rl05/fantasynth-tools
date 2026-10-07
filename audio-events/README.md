@@ -5,6 +5,10 @@ pitched notes, per-stem energy curves, word-aligned lyrics and vocal onsets
 (`<workspace>/out/<slug>/events.json`). Fantasynth reads it to sync visuals to the music.
 Everything runs offline, on a CUDA GPU (tested on an RTX 5090).
 
+![The audio-events viewer](docs/viewer.png)
+
+*The viewer on a test track: sections, sung words (text hidden here), vocal onsets, drum lanes, notes and stem curves, with the track renamed.*
+
 Fixed tempo, 4/4 and DAW-made electronic music are assumed. The file format is specified in
 [CONTRACT.md](CONTRACT.md). The full write-up, with the measurements behind each rule, is
 [https://c4rl05.github.io/fantasynth-tools/audio-events/](https://c4rl05.github.io/fantasynth-tools/audio-events/) (source: [docs/index.html](docs/index.html)).
