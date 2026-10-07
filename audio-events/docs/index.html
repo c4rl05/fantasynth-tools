@@ -169,7 +169,7 @@ footer { font: 400 12px/1.5 var(--mono); color: var(--muted); border-top: 1px so
       <div class="meta">
         <span>Runs on <b>a CUDA GPU</b> (tested on an RTX 5090)</span>
         <span>About <b>1.5 min</b> per track</span>
-        <span>Spec <a href="../CONTRACT.md">CONTRACT.md</a> · usage <a href="../README.md">README.md</a></span>
+        <span>Spec <a href="https://github.com/c4rl05/fantasynth-tools/blob/main/audio-events/CONTRACT.md">CONTRACT.md</a> · usage <a href="https://github.com/c4rl05/fantasynth-tools/blob/main/audio-events/README.md">README.md</a></span>
       </div>
     </header>
 
@@ -339,7 +339,7 @@ copy audio-events\config.example.json &lt;ws&gt;\config.json           <span cla
 
     <section id="lyrics">
       <h2>Lyric alignment</h2>
-      <p>The <code>lyrics</code> stage times every word of a track's <b>known</b> lyric text against the vocals stem. Nothing is transcribed, so nothing can be misheard: the text comes from the track's own JSON (or a plain text file), and the stage only decides <i>when</i> each word is sung. The method is a port of mexicat/pdoom-video's CTC alignment (MIT; see <a href="../../THIRD_PARTY_NOTICES.md">THIRD_PARTY_NOTICES.md</a>). The maths is <code>scripts/lyrics_align.py</code>: numpy, scipy and librosa only, no torch at import, so it is unit-tested on its own. The stage is <code>scripts/lyrics.py</code>: text, emissions on the GPU, the prior and the output file. It runs after <code>curves</code> and before <code>assemble</code>.</p>
+      <p>The <code>lyrics</code> stage times every word of a track's <b>known</b> lyric text against the vocals stem. Nothing is transcribed, so nothing can be misheard: the text comes from the track's own JSON (or a plain text file), and the stage only decides <i>when</i> each word is sung. The method is a port of mexicat/pdoom-video's CTC alignment (MIT; see <a href="https://github.com/c4rl05/fantasynth-tools/blob/main/THIRD_PARTY_NOTICES.md">THIRD_PARTY_NOTICES.md</a>). The maths is <code>scripts/lyrics_align.py</code>: numpy, scipy and librosa only, no torch at import, so it is unit-tested on its own. The stage is <code>scripts/lyrics.py</code>: text, emissions on the GPU, the prior and the output file. It runs after <code>curves</code> and before <code>assemble</code>.</p>
       <div class="status">
         <div><span class="k">Words placed</span><span class="v">all <small>4 test tracks</small></span></div>
         <div><span class="k">Word starts ±60 ms</span><span class="v">0.79 to 0.90 <small>chance 0.61 to 0.71</small></span></div>
@@ -482,7 +482,7 @@ copy audio-events\config.example.json &lt;ws&gt;\config.json           <span cla
 
     <section id="format">
       <h2>events.json format</h2>
-      <p>The canonical specification, with every field, is <a href="../CONTRACT.md">CONTRACT.md</a>. In short: time is measured in <b>beats on the fitted grid</b>, and beat 0 is a downbeat. To convert, <code>seconds = gridMarker + beat × 60 / bpm</code>. Arrays are columnar per lane, so they map straight onto typed arrays. The values below are invented.</p>
+      <p>The canonical specification, with every field, is <a href="https://github.com/c4rl05/fantasynth-tools/blob/main/audio-events/CONTRACT.md">CONTRACT.md</a>. In short: time is measured in <b>beats on the fitted grid</b>, and beat 0 is a downbeat. To convert, <code>seconds = gridMarker + beat × 60 / bpm</code>. Arrays are columnar per lane, so they map straight onto typed arrays. The values below are invented.</p>
 <pre><code>{
   "version": 2,
   "tempo": [{ "beat": 0, "bpm": 120 }],
@@ -600,10 +600,10 @@ copy audio-events\config.example.json &lt;ws&gt;\config.json           <span cla
 
     <section id="licences">
       <h2>Licences</h2>
-      <p>The MIT licence of this repo covers its code only. The models the pipeline downloads at runtime carry their own terms: several are non-commercial (CC BY-NC, CC BY-NC-SA), one package has no licence, and some weights state none. <b>The default pipeline is not suitable for commercial use.</b> Whether a model's terms carry over to the generated JSON is unsettled. The per-model table is in the README's <a href="../README.md#model-weights-and-licences">Model weights and licences</a>.</p>
+      <p>The MIT licence of this repo covers its code only. The models the pipeline downloads at runtime carry their own terms: several are non-commercial (CC BY-NC, CC BY-NC-SA), one package has no licence, and some weights state none. <b>The default pipeline is not suitable for commercial use.</b> Whether a model's terms carry over to the generated JSON is unsettled. The per-model table is in the README's <a href="https://github.com/c4rl05/fantasynth-tools/blob/main/audio-events/README.md#model-weights-and-licences">Model weights and licences</a>.</p>
     </section>
 
-    <footer>fantasynth-tools · audio-events/docs/index.html · <a href="../README.md">README.md</a> · <a href="../CONTRACT.md">CONTRACT.md</a></footer>
+    <footer>fantasynth-tools · audio-events/docs/index.html · <a href="https://github.com/c4rl05/fantasynth-tools/blob/main/audio-events/README.md">README.md</a> · <a href="https://github.com/c4rl05/fantasynth-tools/blob/main/audio-events/CONTRACT.md">CONTRACT.md</a></footer>
   </main>
 </div>
 
