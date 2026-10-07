@@ -11,7 +11,7 @@ Everything runs offline, on a CUDA GPU (tested on an RTX 5090).
 
 Fixed tempo, 4/4 and DAW-made electronic music are assumed. The file format is specified in
 [CONTRACT.md](CONTRACT.md). The full write-up, with the measurements behind each rule, is
-[https://c4rl05.github.io/fantasynth-tools/audio-events/](https://c4rl05.github.io/fantasynth-tools/audio-events/) (source: [docs/index.html](docs/index.html)).
+[https://fantasynth.com/tools/audio-events/](https://fantasynth.com/tools/audio-events/) (source: [docs/index.html](docs/index.html)).
 
 **Licences.** This repo's MIT licence covers its code only. The default pipeline downloads
 models whose licences are non-commercial or not stated, so it is **not suitable for

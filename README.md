@@ -8,7 +8,7 @@ what it reads. Each tool lives in its own folder, with its own README.
 ## Tools
 
 - [audio-events](audio-events/README.md). A finished track goes in. A timed list of its
-  musical events comes out: beat grid, sections, drum hits, notes, energy curves, sung words. [Write-up](https://c4rl05.github.io/fantasynth-tools/audio-events/).
+  musical events comes out: beat grid, sections, drum hits, notes, energy curves, sung words. [Write-up](https://fantasynth.com/tools/audio-events/).
 
   ![The audio-events viewer](audio-events/docs/viewer.png)
 
