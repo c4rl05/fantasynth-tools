@@ -1,0 +1,7 @@
+# Keep the CUDA 12.8 build of torch in venv-main. A bare `pip install` of anything that
+# depends on torchvision will otherwise pull the newest torch from PyPI, which is CPU-only
+# on Windows. Always install with:
+#   pip install -c constraints-main.txt --extra-index-url https://download.pytorch.org/whl/cu128 ...
+torch==2.11.0+cu128
+torchaudio==2.11.0+cu128
+torchvision==0.26.0+cu128

@@ -1,0 +1,36 @@
+# Safety net. Audio, stems, model weights and outputs belong in a tool's workspace outside
+# this repo, and must never be committed.
+
+# Workspace config: per-machine paths and track names. The template config.example.json IS
+# committed.
+config.json
+
+# Audio and audio-derived arrays
+*.wav
+*.flac
+*.mp3
+*.m4a
+*.aac
+*.ogg
+*.opus
+*.npz
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv*/
+.pytest_cache/
+
+# Node
+node_modules/
+
+# Logs
+*.log
+
+# OS and editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/

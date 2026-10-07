@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Event Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg:#0e0f12; --panel:#16181d; --fg:#e8e8ea; --dim:#8a8d96; --line:#2a2d35; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:12px/1.4 ui-monospace, Consolas, monospace; }
+  header { display:flex; gap:12px; align-items:center; padding:10px 16px; background:var(--panel); border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  header select, header button, header input { background:#22252c; color:var(--fg); border:1px solid var(--line); border-radius:3px; padding:4px 8px; font:inherit; }
+  #info { color:var(--dim); }
+  #wrap { position:relative; overflow-x:auto; overflow-y:hidden; }
+  canvas { display:block; }
+  #legend { padding:8px 16px; color:var(--dim); }
+</style>
+</head>
+<body>
+<header>
+  <select id="slug"></select>
+  <select id="src"><option value="audio">original</option><option value="check_drums_mix">drums mix</option><option value="check_drums_split">drums split</option><option value="check_grid">grid clicks</option><option value="check_bass_split">bass split</option></select>
+  <button id="play">play</button>
+  <label>zoom <input id="zoom" type="range" min="8" max="120" value="36"></label>
+  <label><input id="follow" type="checkbox" checked> follow</label>
+  <span id="info"></span>
+</header>
+<div id="wrap"><canvas id="cv"></canvas></div>
+<div id="legend">click to seek · space to play/pause · lanes show SNAPPED events; off-grid hits are drawn hollow · lyrics: words coloured by confidence (red low, green high; blue-grey = hand-timed, no confidence), white bars = line starts, faint band = extras · vocal onsets: yellow flux, pink pitch jump</div>
+<audio id="au" preload="auto"></audio>
+<script>
+const $ = (id) => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d'), au = $('au'), wrap = $('wrap');
+let ev = null, pxPerBeat = 36;
+
+const DRUM_ROWS = ['kick', 'snare', 'toms', 'hatClosed', 'hatOpen', 'crash', 'ride'];
+const DRUM_COLOR = { kick:'#ff5a5a', snare:'#ffb03a', toms:'#c99a6a', hatClosed:'#6ad0ff', hatOpen:'#3a8dff', crash:'#e46bff', ride:'#b39bff' };
+const SECTION_COLOR = { intro:'#3b4254', build:'#8a6d1f', drop:'#a3283a', breakdown:'#1f5f7a', groove:'#35613e', outro:'#3b4254' };
+const CURVE_STEMS = ['drums', 'bass', 'vocals', 'other'];
+const CURVE_COLOR = { drums:'#ff7a5a', bass:'#5aff9a', vocals:'#ffd75a', other:'#7ab8ff' };
+
+const ROW_H = 16, SEC_H = 22, RULER_H = 18, CURVE_H = 36, LABEL_W = 0, LYR_H = 22, ONSET_H = 10;
+const ONSET_COLOR = ['#ffd75a', '#ff6ad5'];  // vocalOnsets kind 0 = flux, 1 = pitch jump
+// Word confidence v: red (<= 0.3) through yellow to green (1).
+const confColor = (v) => `hsl(${Math.round(120 * Math.min(1, Math.max(0, (v - 0.3) / 0.7)))}, 70%, 45%)`;
+
+function decodeCurve(b64) {
+  const s = atob(b64); const a = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i);
+  return a;
+}
+
+function beatAt(t) { return (t - ev.gridMarker) * ev.tempo[0].bpm / 60; }
+
+function layout() {
+  const noteStems = Object.keys(ev.notes || {});
+  const pitches = noteStems.flatMap((s) => ev.notes[s].pitch);
+  const pMin = pitches.length ? Math.min(...pitches) : 36, pMax = pitches.length ? Math.max(...pitches) : 84;
+  const rollH = Math.min(260, Math.max(80, (pMax - pMin + 1) * 3));
+  const curveStems = ev.curves ? CURVE_STEMS.filter((s) => ev.curves.stems[s]) : [];
+  const lyrH = ev.lyrics ? LYR_H : 0, onsetH = ev.vocalOnsets ? ONSET_H : 0;
+  return { noteStems, pMin, pMax, rollH, curveStems, lyrH, onsetH,
+    height: RULER_H + SEC_H + lyrH + onsetH + DRUM_ROWS.length * ROW_H + 8 + rollH + 8 + curveStems.length * CURVE_H + 8 };
+}
+
+function draw() {
+  if (!ev) return;
+  const L = layout();
+  const beats = ev._nBeats;
+  const dpr = window.devicePixelRatio || 1;
+  // Browsers cap a canvas at ~32k px per side.
+  pxPerBeat = Math.min(pxPerBeat, Math.floor(30000 / ((beats + 2) * dpr)));
+  const W = Math.ceil(beats * pxPerBeat) + 40;
+  if (cv.width !== W * dpr || cv.height !== L.height * dpr) {
+    cv.width = W * dpr; cv.height = L.height * dpr; cv.style.width = W + 'px'; cv.style.height = L.height + 'px';
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#0e0f12'; ctx.fillRect(0, 0, W, L.height);
+  const x = (b) => b * pxPerBeat;
+
+  // Bar lines + ruler.
+  for (let b = 0; b <= beats; b++) {
+    const bar = b % ev.meter === 0;
+    ctx.fillStyle = bar ? '#2a2d35' : '#191b20';
+    ctx.fillRect(x(b), RULER_H, 1, L.height);
+    if (bar && (b / ev.meter) % 4 === 0) { ctx.fillStyle = '#8a8d96'; ctx.fillText(String(b / ev.meter), x(b) + 3, 12); }
+  }
+  // Sections.
+  let y = RULER_H;
+  for (const s of ev.sections || []) {
+    ctx.fillStyle = SECTION_COLOR[s.label] || '#444';
+    ctx.fillRect(x(s.startBeat) + 1, y + 2, x(s.beats) - 2, SEC_H - 4);
+    ctx.fillStyle = '#fff'; ctx.fillText(s.label, x(s.startBeat) + 5, y + 15);
+  }
+  y += SEC_H;
+  // Lyrics: extras as a faint band, words as boxes coloured by confidence, line starts marked.
+  if (ev.lyrics) {
+    const lx = ev.lyrics.extras || { b: [], len: [] }, wd = ev.lyrics.words, lines = ev.lyrics.lines;
+    ctx.fillStyle = 'rgba(255,215,90,0.12)';
+    for (let i = 0; i < lx.b.length; i++) ctx.fillRect(x(lx.b[i]), y + 2, x(lx.len[i]), LYR_H - 4);
+    for (let i = 0; i < wd.b.length; i++) {
+      const x0 = x(wd.b[i]), w = Math.max(1, x(wd.len[i]) - 1);
+      ctx.fillStyle = wd.v ? confColor(wd.v[i]) : '#8ab';  // no v: hand-timed, no confidence
+      ctx.fillRect(x0, y + 3, w, LYR_H - 6);
+      const syl = wd.syl && wd.syl[i];
+      if (syl) { ctx.fillStyle = 'rgba(0,0,0,0.6)'; for (const [sb] of syl.slice(1)) ctx.fillRect(x(sb), y + 3, 1, LYR_H - 6); }
+      if (w > 8) {
+        ctx.save(); ctx.beginPath(); ctx.rect(x0, y, w, LYR_H); ctx.clip();
+        ctx.fillStyle = '#fff'; ctx.fillText(wd.w[i], x0 + 2, y + 15);
+        ctx.restore();
+      }
+    }
+    ctx.fillStyle = '#fff';
+    for (const b of lines.b) ctx.fillRect(x(b) - 1, y, 2, LYR_H);
+    y += LYR_H;
+  }
+  // Vocal onsets: ticks, height by strength v, colour by kind.
+  if (ev.vocalOnsets) {
+    const o = ev.vocalOnsets;
+    for (let i = 0; i < o.b.length; i++) {
+      const h = 2 + (ONSET_H - 3) * o.v[i];
+      ctx.fillStyle = ONSET_COLOR[o.kind[i]] || '#aaa';
+      ctx.fillRect(x(o.b[i]), y + ONSET_H - 1 - h, 1, h);
+    }
+    y += ONSET_H;
+  }
+  // Drum lanes.
+  for (const cls of DRUM_ROWS) {
+    const lane = ev.drums && ev.drums[cls];
+    ctx.fillStyle = '#8a8d96'; ctx.fillText(cls, 4 + (wrap.scrollLeft || 0), y + 12);
+    if (lane) {
+      for (let i = 0; i < lane.b.length; i++) {
+        const off = Math.abs(lane.b[i] * 4 - Math.round(lane.b[i] * 4)) > 1e-6;
+        const w = Math.max(2, pxPerBeat / 4 - 1), h = 3 + (ROW_H - 5) * lane.v[i];
+        ctx.fillStyle = DRUM_COLOR[cls];
+        if (off) { ctx.strokeStyle = DRUM_COLOR[cls]; ctx.strokeRect(x(lane.b[i]), y + (ROW_H - h) / 2, w, h); }
+        else ctx.fillRect(x(lane.b[i]), y + (ROW_H - h) / 2, w, h);
+      }
+    }
+    y += ROW_H;
+  }
+  y += 8;
+  // Piano roll.
+  ctx.fillStyle = '#121418'; ctx.fillRect(0, y, W, L.rollH);
+  const ph = L.rollH / (L.pMax - L.pMin + 1);
+  const noteColors = { bass:'#5aff9a', other:'#7ab8ff', vocals:'#ffd75a', guitar:'#ff9a5a', piano:'#d0a0ff' };
+  for (const stem of L.noteStems) {
+    const n = ev.notes[stem];
+    ctx.fillStyle = noteColors[stem] || '#aaa';
+    for (let i = 0; i < n.b.length; i++) {
+      ctx.globalAlpha = 0.35 + 0.65 * n.v[i];
+      ctx.fillRect(x(n.b[i]), y + (L.pMax - n.pitch[i]) * ph, Math.max(1, x(n.len[i])), Math.max(1, ph));
+    }
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#8a8d96'; ctx.fillText('notes: ' + L.noteStems.join(', '), 4 + (wrap.scrollLeft || 0), y + 12);
+  y += L.rollH + 8;
+  // Curves.
+  for (const stem of L.curveStems) {
+    const c = ev._curves[stem];
+    ctx.strokeStyle = CURVE_COLOR[stem]; ctx.beginPath();
+    const spb = ev.curves.samplesPerBeat;
+    for (let i = 0; i < c.length; i++) {
+      const px = x(i / spb), py = y + CURVE_H - 2 - (c[i] / 255) * (CURVE_H - 4);
+      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    }
+    ctx.stroke();
+    ctx.fillStyle = '#8a8d96'; ctx.fillText(stem + ' rms', 4 + (wrap.scrollLeft || 0), y + 11);
+    y += CURVE_H;
+  }
+  // Playhead.
+  const pb = beatAt(au.currentTime || 0);
+  ctx.fillStyle = '#fff'; ctx.fillRect(x(pb), 0, 1, L.height);
+}
+
+async function load() {
+  const slug = $('slug').value;
+  ev = await (await fetch(`out/${slug}/events.json`, { cache: 'no-store' })).json();
+  setSource();
+  ev._curves = {};
+  if (ev.curves) for (const s of CURVE_STEMS) if (ev.curves.stems[s]) ev._curves[s] = decodeCurve(ev.curves.stems[s].rms_db);
+  // Length from the data itself, so drawing never waits on the audio element.
+  const anyCurve = Object.values(ev._curves)[0];
+  const lastHit = Math.max(0, ...Object.values(ev.drums || {}).flatMap((l) => l.b.slice(-1)));
+  ev._nBeats = Math.ceil(anyCurve ? anyCurve.length / ev.curves.samplesPerBeat : lastHit + 8);
+  const hits = Object.entries(ev.drums || {}).map(([k, v]) => `${k} ${v.b.length}`).join(' · ');
+  const vox = (ev.lyrics ? ` · words ${ev.lyrics.words.b.length}` : '') + (ev.vocalOnsets ? ` · vocal onsets ${ev.vocalOnsets.b.length}` : '');
+  $('info').textContent = `${ev.tempo[0].bpm} BPM · beat 0 at ${ev.gridMarker}s · fit p95 ${ev.gridFit ? ev.gridFit.residualMsP95 : '?'} ms · ${hits}${vox}`;
+  draw();
+}
+
+function setSource() {
+  const slug = $('slug').value, src = $('src').value;
+  const t = au.currentTime || 0, playing = !au.paused;
+  au.src = src === 'audio' ? `audio/${slug}.wav` : `out/${slug}/${src}.mp3`;
+  au.currentTime = t; if (playing) au.play();
+}
+
+$('slug').onchange = load;
+$('src').onchange = setSource;
+$('play').onclick = () => (au.paused ? au.play() : au.pause());
+$('zoom').oninput = (e) => { pxPerBeat = +e.target.value; draw(); };
+document.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); $('play').click(); } });
+cv.addEventListener('click', (e) => {
+  const b = (e.offsetX) / pxPerBeat;
+  au.currentTime = Math.max(0, ev.gridMarker + b * 60 / ev.tempo[0].bpm);
+  draw();
+});
+wrap.addEventListener('scroll', draw);
+async function listSlugs() {
+  // The menu lists the workspace's slugs (serve.py's /slugs.json: every out/<slug>/ with an
+  // events.json). ?slug=<name> selects one, and adds it when the list is unavailable.
+  let slugs = [];
+  try { slugs = await (await fetch('slugs.json', { cache: 'no-store' })).json(); } catch (e) { /* another server */ }
+  for (const s of slugs) $('slug').add(new Option(s, s));
+  const want = new URLSearchParams(location.search).get('slug');
+  if (want) {
+    if (![...$('slug').options].some((o) => o.value === want)) $('slug').add(new Option(want, want));
+    $('slug').value = want;
+  }
+  if (!$('slug').value) {
+    $('info').textContent = 'no tracks: run the pipeline first, or open viewer.html?slug=<slug>';
+    return false;
+  }
+  return true;
+}
+(function tick() {
+  if (ev && !au.paused) {
+    const px = beatAt(au.currentTime) * pxPerBeat;
+    if ($('follow').checked && (px < wrap.scrollLeft + 80 || px > wrap.scrollLeft + wrap.clientWidth - 80)) wrap.scrollLeft = px - 120;
+    draw();
+  }
+  requestAnimationFrame(tick);
+})();
+listSlugs().then((ok) => ok && load());
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "audio-events-measure",
+  "private": true,
+  "description": "Dependencies of the media-element seek test (seek_formats.mjs). Run npm install here once.",
+  "license": "MIT",
+  "devDependencies": {
+    "playwright": "1.58.2"
+  }
+}

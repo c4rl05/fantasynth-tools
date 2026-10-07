@@ -1,0 +1,16 @@
+# Safety net. Heavy state and the per-track config.json belong in the workspace outside the repo
+# (see workspace.py; the repo has config.example.json), and commercial audio or anything derived
+# from it (stems, detections) must never be committed.
+venv*/
+models/
+audio/
+out/
+seektest/
+__pycache__/
+node_modules/
+config.json
+*.wav
+*.flac
+*.mp3
+*.npz
+*.log

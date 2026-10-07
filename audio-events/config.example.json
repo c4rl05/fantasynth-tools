@@ -1,0 +1,34 @@
+{
+  "_comment": [
+    "Copy to <workspace>/config.json and edit. That copy is per machine and never committed.",
+    "<workspace> is AUDIO_EVENTS_WORKSPACE, else <clone>/../../audio-events if that folder exists, else <clone>/../audio-events. python audio-events/workspace.py prints it.",
+    "Keys starting with _ are ignored. Every key is optional; unknown keys are an error.",
+    "app: the Fantasynth app checkout (must hold public/music/index.json). --app and FANTASYNTH_APP take precedence.",
+    "musicDir: the local music folder the app serves as /local-music/. The LOCAL_MUSIC_PATH environment variable, when set, wins over musicDir; default ~/Music/Live.",
+    "tracks: keyed by slug (out/<slug>/). --all on every stage means every slug listed here.",
+    "  file: the audio file name in musicDir (export_app.py: url of a new track file; measure/seek_formats_prep.py).",
+    "  appTrack: the app track, public/music/<appTrack>.json (export target; the lyrics stage reads its lyric text).",
+    "  title: display title, used only when export_app.py creates a track file that does not exist yet (needs file too).",
+    "  bpm, gridMarker: a hand-measured grid, used only for grid.py's diagnostic comparison, never for fitting.",
+    "  handTimed: why the track's inline lyrics were timed by hand; the lyrics stage then takes them verbatim and export_app.py --lyrics never overwrites them.",
+    "  pron: pronunciation fixes for the aligner, {\"<token>\": \"<spelling>\"}.",
+    "  all: false leaves the slug out of every --all (every stage, export_app.py, seek_formats_prep.py); --slug still reaches it. Default true."
+  ],
+  "app": "C:/path/to/the/fantasynth/app",
+  "musicDir": "C:/path/to/your/music",
+  "tracks": {
+    "track-a": {
+      "file": "Artist - Track A.mp3",
+      "appTrack": "track_a",
+      "title": "Artist - Track A",
+      "bpm": 124,
+      "gridMarker": 0.5
+    },
+    "track-b": {
+      "appTrack": "track_b",
+      "handTimed": "word timings fitted by hand; do not align",
+      "pron": {"DJ": "dee jay"},
+      "all": false
+    }
+  }
+}

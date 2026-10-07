@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>html,body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>audio-events Pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --ground: #f4f5f8;
+  --surface: #ffffff;
+  --ink: #171a21;
+  --muted: #5d6475;
+  --line: #dde1e8;
+  --code: #eceff4;
+  --accent: #b8246a;
+  --accent-soft: #f7e3ee;
+  --good: #1a8a55;
+  --warn: #b8730a;
+  --bad: #c0392f;
+  --kick: #d63c3c; --snare: #cc7e0e; --hat: #1a88bb; --bass: #178f58; --vocal: #9d7700; --other: #5566cc;
+  --intro: #8a92a6; --build: #cf9416; --drop: #d63c3c; --breakdown: #2a86b0; --groove: #3a9a62;
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --cond: "IBM Plex Sans Condensed", "Arial Narrow", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0f1115; --surface: #161920; --ink: #e8ebf2; --muted: #9aa1b1; --line: #282c36;
+    --code: #1c2029; --accent: #ff5aae; --accent-soft: #3a1a2b; --good: #5ce39a; --warn: #ffb54a; --bad: #ff6b60;
+    --kick: #ff5d5d; --snare: #ffb13c; --hat: #6ccfff; --bass: #5cf29a; --vocal: #ffd75a; --other: #8fa0ff;
+    --intro: #7b8397; --build: #e8b12e; --drop: #ff5d5d; --breakdown: #3aa6d6; --groove: #4fc583;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0f1115; --surface: #161920; --ink: #e8ebf2; --muted: #9aa1b1; --line: #282c36;
+  --code: #1c2029; --accent: #ff5aae; --accent-soft: #3a1a2b; --good: #5ce39a; --warn: #ffb54a; --bad: #ff6b60;
+  --kick: #ff5d5d; --snare: #ffb13c; --hat: #6ccfff; --bass: #5cf29a; --vocal: #ffd75a; --other: #8fa0ff;
+  --intro: #7b8397; --build: #e8b12e; --drop: #ff5d5d; --breakdown: #3aa6d6; --groove: #4fc583;
+}
+* { box-sizing: border-box; }
+body { background: var(--ground); color: var(--ink); font: 400 15.5px/1.6 var(--sans); padding-inline: 20px; padding-block: 0 80px; }
+a { color: var(--accent); }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.layout { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); gap: 0; } nav.toc { display: none; } }
+
+nav.toc { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; padding-top: 40px; max-height: 100vh; overflow-y: auto; }
+nav.toc .toc-title { font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: toc; }
+nav.toc li a { display: block; padding: 4px 8px; border-radius: 4px; color: var(--ink); text-decoration: none; font-size: 14px; line-height: 1.35; }
+nav.toc li a:hover { background: var(--surface); }
+nav.toc li.sub a { padding-left: 20px; color: var(--muted); font-size: 13px; }
+
+main { min-width: 0; padding-top: 40px; display: grid; gap: 56px; }
+.titleblock { display: grid; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 28px; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+h1 { font: 700 clamp(34px, 5vw, 50px)/1.02 var(--cond); margin: 0; letter-spacing: -.01em; }
+h2 { font: 700 28px/1.1 var(--cond); margin: 0 0 4px; text-wrap: balance; }
+h3 { font: 600 19px/1.25 var(--cond); margin: 18px 0 2px; }
+h4 { font: 600 12px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 16px 0 4px; }
+p { margin: 0; max-width: 72ch; }
+section { display: grid; gap: 12px; scroll-margin-top: 16px; }
+section > p, section > ul, section > ol { max-width: 72ch; }
+ul, ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+code { font: 400 .88em var(--mono); background: var(--code); padding: 1px 5px; border-radius: 3px; }
+pre { margin: 0; background: var(--code); border-radius: 6px; padding: 14px 16px; overflow-x: auto; font: 400 13px/1.55 var(--mono); }
+pre code { background: none; padding: 0; font-size: inherit; }
+.c { color: var(--muted); }
+
+.meta { display: flex; flex-wrap: wrap; gap: 8px 22px; font: 400 13px/1.4 var(--mono); color: var(--muted); }
+.meta b { color: var(--ink); font-weight: 500; }
+
+/* Status strip */
+.status { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.status div { background: var(--surface); padding: 12px 14px; display: grid; gap: 2px; }
+.status .k { font: 500 11px/1.2 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.status .v { font: 600 17px/1.25 var(--cond); }
+.status .v small { font: 400 12px var(--mono); color: var(--muted); }
+
+/* Flow */
+.flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+.flow .node { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; flex: 1 1 150px; display: grid; gap: 3px; align-content: start; }
+.flow .node.hl { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.flow .node .n { font: 600 14px/1.25 var(--cond); }
+.flow .node .d { font-size: 13px; color: var(--muted); line-height: 1.4; }
+.flow .node code { font-size: 11.5px; }
+.flow .arrow { align-self: center; color: var(--muted); font: 500 18px var(--mono); }
+@media (max-width: 700px) { .flow .arrow { display: none; } }
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+.split > div { background: var(--surface); border: 1px solid var(--line); border-top: 2px solid var(--accent); border-radius: 6px; padding: 10px 12px; display: grid; gap: 2px; }
+.split > div span { color: var(--muted); font-size: 13px; line-height: 1.4; }
+
+/* Tables */
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+th { font: 600 11px/1.3 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--ground); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+td code { white-space: nowrap; }
+td.wrap code { white-space: normal; }
+
+/* Callouts */
+.callout { border: 1px solid var(--line); border-left: 3px solid var(--accent); background: var(--surface); border-radius: 4px 6px 6px 4px; padding: 12px 14px; display: grid; gap: 4px; max-width: 80ch; }
+.callout.warn { border-left-color: var(--warn); }
+.callout .ct { font: 600 12px/1.2 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+/* Pills */
+.pill { display: inline-block; font: 500 11px/1 var(--mono); letter-spacing: .04em; text-transform: uppercase; padding: 4px 7px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.pill.new { color: var(--good); } .pill.mod { color: var(--warn); } .pill.solid { color: var(--good); } .pill.mostly { color: var(--warn); } .pill.draft { color: var(--muted); } .pill.check { color: var(--bad); }
+
+/* Viewer mock */
+.mock { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #0e0f12; }
+.mock svg { display: block; width: 100%; height: auto; }
+.mock .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 10px; background: #16181d; border-bottom: 1px solid #2a2d35; font: 400 12px var(--mono); color: #cfd3dc; }
+.mock .bar span.ctl { border: 1px solid #2a2d35; background: #22252c; border-radius: 3px; padding: 2px 7px; }
+.mock .bar span.inf { color: #8a8d96; }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 6px 20px; font-size: 14px; }
+.legend div { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; }
+.legend i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; margin-top: 4px; }
+
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+details > summary { cursor: pointer; padding: 10px 14px; font-weight: 600; }
+details > div { padding: 0 14px 14px; display: grid; gap: 10px; }
+
+footer { font: 400 12px/1.5 var(--mono); color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="toc" aria-label="Contents">
+    <div class="toc-title">Contents</div>
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#quickstart">Quick start</a></li>
+      <li><a href="#pipeline">Offline pipeline</a></li>
+      <li class="sub"><a href="#workspace">Workspace and config</a></li>
+      <li class="sub"><a href="#rebuild">Rebuilding the workspace</a></li>
+      <li class="sub"><a href="#stages">Stages</a></li>
+      <li class="sub"><a href="#rules">Assembly rules</a></li>
+      <li class="sub"><a href="#reliability">Measured reliability</a></li>
+      <li><a href="#lyrics">Lyric alignment</a></li>
+      <li class="sub"><a href="#lyr-method">Method</a></li>
+      <li class="sub"><a href="#lyr-prior">The line-time prior</a></li>
+      <li class="sub"><a href="#lyr-onsets">Vocal onsets and extras</a></li>
+      <li class="sub"><a href="#lyr-sections">Lyric-informed sections</a></li>
+      <li class="sub"><a href="#lyr-measured">Measured</a></li>
+      <li><a href="#viewer">The viewer</a></li>
+      <li><a href="#format">events.json format</a></li>
+      <li><a href="#export">Exporting to Fantasynth</a></li>
+      <li><a href="#seek">Seek accuracy</a></li>
+      <li><a href="#tests">Tests</a></li>
+      <li><a href="#limits">Known limitations</a></li>
+      <li><a href="#gotchas">Gotchas</a></li>
+      <li><a href="#licences">Licences</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="titleblock">
+      <div class="eyebrow">fantasynth-tools · audio-events</div>
+      <h1>Music events</h1>
+      <p>An offline pipeline turns a finished track into a timeline of musical events: beat grid, drum hits, notes, per-instrument energy curves, named sections and, for songs with lyrics, every sung word. Fantasynth reads that timeline to sync visuals to the music.</p>
+      <div class="meta">
+        <span>Runs on <b>a CUDA GPU</b> (tested on an RTX 5090)</span>
+        <span>About <b>1.5 min</b> per track</span>
+        <span>Spec <a href="../CONTRACT.md">CONTRACT.md</a> · usage <a href="../README.md">README.md</a></span>
+      </div>
+    </header>
+
+    <section id="overview">
+      <h2>Overview</h2>
+      <p>The pipeline runs AI models on your own machine and keeps its heavy state (Python environments, model weights, audio, results) in a <b>workspace</b> folder outside the repo. Its product is one file per track, <code>events.json</code>. This page covers the pipeline and that file; Fantasynth's side of it is not part of this repo.</p>
+      <div class="flow" role="list" aria-label="Data flow">
+        <div class="node" role="listitem"><span class="n">Source audio</span><span class="d">your own files, in <code>musicDir</code></span></div>
+        <span class="arrow" aria-hidden="true">→</span>
+        <div class="node hl" role="listitem"><span class="n">run_all.py</span><span class="d">10 stages, one command per track, ending in a report card</span></div>
+        <span class="arrow" aria-hidden="true">→</span>
+        <div class="node" role="listitem"><span class="n">out/&lt;slug&gt;/events.json</span><span class="d">plus stems, raw detections, listening checks</span></div>
+        <span class="arrow" aria-hidden="true">→</span>
+        <div class="node" role="listitem"><span class="n">viewer.html</span><span class="d">inspect by eye and ear before exporting</span></div>
+        <span class="arrow" aria-hidden="true">→</span>
+        <div class="node hl" role="listitem"><span class="n">export_app.py</span><span class="d">compact events, track JSON, FLAC copy, into a Fantasynth checkout</span></div>
+      </div>
+      <div class="split">
+        <div><b>Grid</b><span>A rigid tempo fit, moved onto the kick attack.</span></div>
+        <div><b>Hits</b><span>Seven drum lanes, voted by three detectors.</span></div>
+        <div><b>Curves</b><span>Loudness, brightness and onset strength per stem.</span></div>
+        <div><b>Sung words</b><span>The known lyric, timed word by word from the vocals.</span></div>
+      </div>
+      <div class="status">
+        <div><span class="k">Grid accuracy</span><span class="v">±2 ms <small>on the kick</small></span></div>
+        <div><span class="k">Kick precision</span><span class="v">0.96 to 1.00 <small>3 test tracks</small></span></div>
+        <div><span class="k">Seek accuracy</span><span class="v">±0.1 ms <small>FLAC</small></span></div>
+        <div><span class="k">Lyric word starts</span><span class="v">79 to 90% <small>within ±60 ms</small></span></div>
+      </div>
+    </section>
+
+    <section id="quickstart">
+      <h2>Quick start</h2>
+      <p>Run everything from the root of the <code>fantasynth-tools</code> repo, except the tests. <code>&lt;ws&gt;</code> is the workspace; <code>python audio-events\workspace.py</code> prints it. Setup is Windows-only today (<code>setup.ps1</code>, <code>Scripts\python.exe</code>).</p>
+      <h4>Set up (once per machine, or to repair)</h4>
+<pre><code>powershell -ExecutionPolicy Bypass -File audio-events\setup.ps1      <span class="c"># -DryRun prints the commands</span>
+copy audio-events\config.example.json &lt;ws&gt;\config.json           <span class="c"># then list your tracks in it</span></code></pre>
+      <h4>Analyse a new track</h4>
+<pre><code>&lt;ws&gt;\venv-main\Scripts\python.exe audio-events\run_all.py "C:\path\to\music\My Track.mp3" --slug my-track
+<span class="c"># optional: --from assemble        (resume from a stage)</span>
+<span class="c">#           --track my_track       (the track JSON holding the lyric text; default: appTrack in config.json)</span>
+<span class="c">#           --app C:\path\to\fantasynth   (the checkout that track JSON lives in)</span></code></pre>
+      <h4>Inspect it in the viewer</h4>
+<pre><code>&lt;ws&gt;\venv-main\Scripts\python.exe audio-events\serve.py
+<span class="c"># open http://127.0.0.1:8765/viewer.html?slug=my-track</span></code></pre>
+      <h4>Export it into Fantasynth</h4>
+<pre><code>&lt;ws&gt;\venv-main\Scripts\python.exe audio-events\export_app.py --slug my-track --flac
+<span class="c"># the checkout comes from --app, else FANTASYNTH_APP, else "app" in config.json</span>
+<span class="c"># add --lyrics to replace the track's inline lyrics with the aligned, word-level ones</span></code></pre>
+      <h4>Run the tests (from audio-events/)</h4>
+<pre><code>&lt;ws&gt;\venv-main\Scripts\python.exe -m unittest discover -s tests</code></pre>
+    </section>
+
+    <section id="pipeline">
+      <h2>Offline pipeline</h2>
+      <p>The <b>code</b> is in the repo. Everything heavy lives in one <b>workspace</b> folder outside it, shared by every checkout and worktree, so the multi-gigabyte environments, model weights and audio stay out of git.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Repo path (<code>audio-events/</code>)</th><th>Contents</th></tr></thead>
+        <tbody>
+          <tr><td><code>run_all.py</code></td><td>Runs every stage for one track.</td></tr>
+          <tr><td><code>scripts/*.py</code></td><td>One script per stage; each takes <code>--slug</code> or <code>--all</code>. <code>scripts/lyrics_align.py</code> is the aligner's maths, imported by the <code>lyrics</code> stage.</td></tr>
+          <tr><td><code>config.example.json</code></td><td>Template for the workspace <code>config.json</code>.</td></tr>
+          <tr><td><code>report.py</code>, <code>tests/</code></td><td>The per-track report card and the unit tests.</td></tr>
+          <tr><td><code>viewer.html</code>, <code>serve.py</code></td><td>The inspection viewer and its local server.</td></tr>
+          <tr><td><code>export_app.py</code></td><td>Writes events into a Fantasynth checkout and edits the track JSON.</td></tr>
+          <tr><td><code>measure/</code></td><td>Chromium seek accuracy per audio format; re-run when Chrome updates.</td></tr>
+          <tr><td><code>setup.ps1</code>, <code>requirements-*.txt</code>, <code>constraints-main.txt</code></td><td>Builds both environments. The constraints file pins the CUDA torch build.</td></tr>
+          <tr><td><code>workspace.py</code></td><td>Path and config resolution for everything in the workspace.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 id="workspace">Workspace and config</h3>
+      <p><code>workspace.py</code> resolves the workspace: <code>AUDIO_EVENTS_WORKSPACE</code> if set, otherwise <code>&lt;main checkout&gt;/../../audio-events</code> if that folder already exists, otherwise <code>&lt;main checkout&gt;/../audio-events</code>, a folder next to your clone. Worktrees resolve to the same folder because the main checkout is found through git's common directory. Everything that names a track or a machine lives in <code>&lt;workspace&gt;/config.json</code>, never in the repo:</p>
+<pre><code>{
+  "app": "C:/path/to/fantasynth",       <span class="c">// the Fantasynth checkout export_app.py writes into</span>
+  "musicDir": "C:/path/to/music",       <span class="c">// optional: where the source audio lives</span>
+  "tracks": {
+    "my-track": {
+      "file": "My Track.mp3",           <span class="c">// the audio file in musicDir</span>
+      "appTrack": "my_track",           <span class="c">// public/music/&lt;appTrack&gt;.json in the checkout</span>
+      "title": "My Track",              <span class="c">// display title, for a new track file</span>
+      "bpm": 120, "gridMarker": 0.5,    <span class="c">// optional, diagnostic only</span>
+      "handTimed": "fitted by hand",    <span class="c">// optional: do not align this track's lyrics</span>
+      "pron": { "DJ": "dee jay" },      <span class="c">// optional: pronunciation fixes</span>
+      "all": false                      <span class="c">// optional: leave out of --all (default true)</span>
+    }
+  }
+}</code></pre>
+      <p>Every key is optional; an unknown key or a value of the wrong type stops the run, and keys starting with <code>_</code> are ignored. <code>--all</code> means every slug in <code>tracks</code> except those with <code>"all": false</code> (for <code>export_app.py</code>, those with an <code>appTrack</code>; for <code>report.py</code>, every analysed slug in <code>out/</code>). The music folder is <code>LOCAL_MUSIC_PATH</code> when set, else <code>musicDir</code>, else <code>~/Music/Live</code>. The Fantasynth checkout is resolved lazily, only by the commands that read or write it (<code>export_app.py</code>, the <code>lyrics</code> stage, and <code>run_all.py</code> before its first stage when <code>lyrics</code> will read a track file): <code>--app</code>, then <code>FANTASYNTH_APP</code>, then <code>config.app</code>, else an error. A folder without <code>public/music/index.json</code> is refused. Importing a module or running the tests never needs it.</p>
+
+      <h3 id="rebuild">Rebuilding the workspace</h3>
+      <p>Nothing in the workspace is irreplaceable except <code>config.json</code>: every other folder is rebuilt by code in the repo. Two inputs live outside the repo, though: your source music, and third-party download links.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Workspace path</th><th class="num">Size</th><th>Rebuilt by</th><th>Depends on</th></tr></thead>
+        <tbody>
+          <tr><td><code>venv-main/</code>, <code>venv-bp/</code></td><td class="num">several GB</td><td><code>setup.ps1</code> + pinned requirements</td><td>Python 3.13 and 3.10 installed; the pinned packages still on PyPI and the PyTorch index. Proven by a real install into an empty workspace.</td></tr>
+          <tr><td><code>models/</code></td><td class="num">1.1 GB</td><td>Downloaded by the <code>separate</code> stage on first run</td><td>python-audio-separator's GitHub <code>model-configs</code> release. <b>The one fragile input</b>: the checkpoints' original release already disappeared once. Keep a backup of this folder outside the repo.</td></tr>
+          <tr><td><code>models/torch/</code></td><td class="num">2.4 GB</td><td>Downloaded by the <code>lyrics</code> stage on first run (<code>TORCH_HOME</code>)</td><td>torchaudio's <code>MMS_FA</code> and <code>WAV2VEC2_ASR_LARGE_LV60K_960H</code> from pytorch.org. Only needed for tracks with lyric text.</td></tr>
+          <tr><td><code>audio/</code></td><td class="num">≈40 MB per track</td><td>The <code>decode</code> stage of <code>run_all.py</code></td><td>Your source files, never in the repo.</td></tr>
+          <tr><td><code>out/</code></td><td class="num">≈1 GB per track</td><td>Every stage of <code>run_all.py</code></td><td>The steps above.</td></tr>
+        </tbody>
+      </table></div>
+      <p>Also rebuilt automatically: the Beat This! and all-in-one weights in <code>~/.cache</code>, and the FLAC copies next to the MP3s (<code>export_app.py --flac</code>). <code>measure/</code> writes its own <code>seektest/</code> folder when run.</p>
+      <div class="callout warn"><span class="ct">Not quite deterministic</span><p>all-in-one-infer varies from run to run on the same install: beats move by one 10 ms frame, a section boundary by about 0.2 s, and the downbeat vote shifts. On the test tracks the rigid grid fit and bar snapping absorbed it, and a full re-run reproduced <code>events.json</code> byte for byte. A track with a weak downbeat could still come out with a different section or bar phase, so check its report card.</p></div>
+
+      <h3 id="stages">Stages</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Stage</th><th>Tool</th><th>Output</th></tr></thead>
+        <tbody>
+          <tr><td>decode</td><td>ffmpeg</td><td><code>audio/&lt;slug&gt;.wav</code></td></tr>
+          <tr><td>grid</td><td>Beat This! (<code>final0</code>) + all-in-one-infer 3.1.0</td><td><code>grid.json</code>: rigid tempo fit, downbeat phase, raw sections</td></tr>
+          <tr><td>separate</td><td>BS-Roformer-SW, then MDX23C DrumSep</td><td>6 stems (drums, bass, vocals, guitar, piano, other) + 6 drum stems (kick, snare, toms, hh, ride, crash)</td></tr>
+          <tr><td>drums</td><td>ADTOF-pytorch on the drum stem and on the mix; librosa onsets per drum stem</td><td><code>raw_adtof.json</code>, <code>raw_adtof_mix.json</code>, <code>raw_drumsep_onsets.json</code></td></tr>
+          <tr><td>notes</td><td>Basic Pitch per pitched stem (<code>venv-bp</code>)</td><td><code>raw_notes_&lt;stem&gt;.json</code></td></tr>
+          <tr><td>curves</td><td>librosa, 100 fps</td><td><code>curves.npz</code>: RMS, spectral centroid, onset strength</td></tr>
+          <tr><td>lyrics</td><td>torchaudio <code>MMS_FA</code> + <code>WAV2VEC2_ASR_LARGE_LV60K_960H</code> (CTC), one global Viterbi, librosa features (see <a href="#lyrics">Lyric alignment</a>)</td><td><code>raw_lyrics.json</code>: word timings, confidence, extras, vocal onsets (seconds); <code>lyrics_em/</code>: cached emissions</td></tr>
+          <tr><td>assemble</td><td><code>assemble.py</code></td><td><code>events.json</code>, with <code>lyrics</code> and <code>vocalOnsets</code> when there are any</td></tr>
+          <tr><td>render</td><td><code>render_check.py</code></td><td><code>check_grid</code>, <code>check_drums_split</code>, <code>check_drums_mix</code>, <code>check_bass_split</code>, and with lyrics <code>check_lyrics_split</code>, <code>check_vocal_onsets_split</code> (.mp3)</td></tr>
+          <tr><td>report</td><td><code>report.py</code></td><td><code>report.json</code> and a printed report card: measures <code>events.json</code> against the stems and gives each layer a verdict (solid, mostly, check)</td></tr>
+        </tbody>
+      </table></div>
+      <p class="c" style="font-size:14px">Measured per track: grid 21 to 29 s (most of it all-in-one-infer), separation 20 to 24 s, drum detection about 5 s, lyric emissions about 7 s (37 s with the first model load) and every lyric alignment under 1 s. The other stages weren't timed.</p>
+
+      <h3 id="rules">Assembly rules</h3>
+      <p><code>scripts/assemble.py</code> merges the raw stages. Each rule came from a measurement on a test track; its docstring gives the numbers.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Area</th><th>Rule</th></tr></thead>
+        <tbody>
+          <tr><td>Grid</td><td>One rigid fit (the test tracks never change tempo), BPM snapped to an integer when the fit allows it, downbeat phase chosen by vote. <code>t0</code> is then moved onto the median on-beat kick attack, because the beat trackers land 5 to 20 ms late (shifts of −5 to −18 ms on the test tracks).</td></tr>
+          <tr><td>Grid seed</td><td>Seeded twice, from a sequential beat-index chain and from a phase-coherence period scan (±3%); the coherence fit wins only with strictly more inliers. On one track the chain miscounted through a drumless intro and settled at 119.65 BPM with 40 of 439 inliers, where the kicks say 121 (291 inliers). On another, the coherence seed alone lands at 136.77 against a true 136, which is why the guard is strict.</td></tr>
+          <tr><td>Drum voting</td><td>Three detectors: ADTOF on the drum stem, ADTOF on the full mix, and onsets on the matching DrumSep stem. Hits within 30 ms are one cluster; a hit is kept with two or more votes. Clustering is non-maximum suppression, best cluster first.</td></tr>
+          <tr><td>Solo DrumSep hits</td><td>A snare or hat heard only by DrumSep is kept when that drum stem is at least 10 dB louder than every other drum stem there. This is what catches build-up rolls.</td></tr>
+          <tr><td>Hats</td><td>A hat that coincides with a kick or snare needs DrumSep's hi-hat vote (ADTOF reads kicks and claps as hats). A DrumSep-only hat is also kept at −8 dB dominance when no kick or dominant snare onset is within 30 ms.</td></tr>
+          <tr><td>Toms, cymbals</td><td>Toms need both ADTOF passes and no kick in the window. Cymbals need the drum-stem ADTOF vote. Crash versus ride is decided by the louder DrumSep stem.</td></tr>
+          <tr><td>Open hats</td><td>Open if the hi-hat stem takes at least 150 ms to fall 12 dB, measured only up to the next hit.</td></tr>
+          <tr><td>Swing</td><td>Per lane. If the 2nd and 4th 16ths form a dense cluster at least 25 ms later than the on-beat hits, the lane gets a swung slot as well as the straight one. On one test track the hats swung +36.5 ms while its snares were straight.</td></tr>
+          <tr><td>Snapping</td><td>Every hit snaps to the nearest 16th (straight or swung slot). A hit further than a third of a 16th away keeps its raw position and gets residual <code>r = 0</code>.</td></tr>
+          <tr><td>Sections</td><td>allin1 boundaries snap to bars, then to the 8-bar phrase grid (offset found by vote, moves of one bar at most). Sections split at 4-bar marks when kick presence changes by 0.75 or stem level steps 6 dB (drums) or 9 dB (bass), floored at −50 dBFS. Labels (intro, build, drop, breakdown, groove, outro) come from kick fill and drums+bass energy. With lyrics, a boundary one bar from a vocal entry moves onto it first (see <a href="#lyr-sections">Lyric-informed sections</a>).</td></tr>
+          <tr><td>Lyrics, vocal onsets</td><td>Converted to beats on the shifted grid and rounded to 3 decimals, never snapped: a singer is not quantised. A span's <code>len</code> is its rounded end minus its rounded start, so legato words that tile in seconds still tile in beats.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 id="reliability">Measured reliability</h3>
+      <p>Measured from the audio at ±30 ms on the snapped fire time, first by independent verification and now by <code>report.py</code>, which reproduces the same numbers. P = precision (hits that are real), R = recall (real hits found). Three electronic test tracks (A, B, C), 126 to 129 BPM. Letters match the comments in the code.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Track</th><th class="num">Grid vs kick</th><th class="num">Kick P / R</th><th class="num">Snare P / R</th><th class="num">Hats P / R</th></tr></thead>
+        <tbody>
+          <tr><td>Test track A</td><td class="num">−6.2 ms</td><td class="num">0.96 / 0.95</td><td class="num">0.90 / 0.48</td><td class="num">0.85 / 0.98</td></tr>
+          <tr><td>Test track B</td><td class="num">−1.5 ms</td><td class="num">1.00 / 0.99</td><td class="num">1.00 / 0.69</td><td class="num">0.99 / 0.90</td></tr>
+          <tr><td>Test track C</td><td class="num">−1.6 ms</td><td class="num">0.99 / 1.00</td><td class="num">1.00 / 0.96</td><td class="num">0.96 / 0.99</td></tr>
+        </tbody>
+      </table></div>
+      <div class="tbl"><table>
+        <thead><tr><th>Layer</th><th>Verdict</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Beat grid, downbeats</td><td><span class="pill solid">solid</span></td><td>Correct on all three tracks; integer BPM.</td></tr>
+          <tr><td>Kicks</td><td><span class="pill solid">solid</span></td><td>95 to 100% in both directions.</td></tr>
+          <tr><td>Energy curves</td><td><span class="pill solid">solid</span></td><td>Correlation 0.9997+ with the audio at zero lag.</td></tr>
+          <tr><td>Snares, hats</td><td><span class="pill mostly">mostly</span></td><td>Swing, claps and bleed are the hard cases. Track A's swung hats reach a precision of about 0.83 against real strikes.</td></tr>
+          <tr><td>Sections</td><td><span class="pill mostly">mostly</span></td><td>Heuristic labels; drops are right everywhere. allin1 boundaries can differ between identical runs.</td></tr>
+          <tr><td>Lyrics</td><td><span class="pill solid">solid</span> / <span class="pill mostly">mostly</span></td><td>Solid on one test track, mostly on three. Every word placed. See <a href="#lyr-measured">Measured</a>.</td></tr>
+          <tr><td>Vocal onsets</td><td><span class="pill draft">info</span></td><td>A measurement, not a verdict: 73 to 85% of the pitch-jump onsets have no Basic Pitch vocal note within 50 ms.</td></tr>
+          <tr><td>Notes</td><td><span class="pill draft">draft</span></td><td>In the file, never checked against the audio.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="lyrics">
+      <h2>Lyric alignment</h2>
+      <p>The <code>lyrics</code> stage times every word of a track's <b>known</b> lyric text against the vocals stem. Nothing is transcribed, so nothing can be misheard: the text comes from the track's own JSON (or a plain text file), and the stage only decides <i>when</i> each word is sung. The method is a port of mexicat/pdoom-video's CTC alignment (MIT; see <a href="../../THIRD_PARTY_NOTICES.md">THIRD_PARTY_NOTICES.md</a>). The maths is <code>scripts/lyrics_align.py</code>: numpy, scipy and librosa only, no torch at import, so it is unit-tested on its own. The stage is <code>scripts/lyrics.py</code>: text, emissions on the GPU, the prior and the output file. It runs after <code>curves</code> and before <code>assemble</code>.</p>
+      <div class="status">
+        <div><span class="k">Words placed</span><span class="v">all <small>4 test tracks</small></span></div>
+        <div><span class="k">Word starts ±60 ms</span><span class="v">0.79 to 0.90 <small>chance 0.61 to 0.71</small></span></div>
+        <div><span class="k">Emissions</span><span class="v">≈7 s <small>per track</small></span></div>
+        <div><span class="k">Alignment</span><span class="v">&lt; 1 s <small>whole song, one pass</small></span></div>
+      </div>
+      <h4>Run it</h4>
+<pre><code>&lt;ws&gt;\venv-main\Scripts\python.exe audio-events\scripts\lyrics.py --slug my-track
+&lt;ws&gt;\venv-main\Scripts\python.exe audio-events\scripts\lyrics.py --slug my-track --track my_track --app C:\path\to\fantasynth
+&lt;ws&gt;\venv-main\Scripts\python.exe audio-events\scripts\lyrics.py --slug my-track --text lyrics.txt --window 0
+<span class="c"># then: run_all.py "&lt;track.mp3&gt;" --slug my-track --from assemble</span></code></pre>
+      <div class="tbl"><table>
+        <thead><tr><th>Input</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td><code>--track &lt;name&gt;</code></td><td>The text is the inline <code>lyrics</code> of <code>public/music/&lt;name&gt;.json</code> in the Fantasynth checkout, word- or line-level; only the words are used, and the line times only as the prior below. Default: the slug's <code>appTrack</code> in <code>config.json</code>. <code>run_all.py --track</code> passes it through. A track file that cannot be found is an error: nothing is written.</td></tr>
+          <tr><td><code>--text &lt;file&gt;</code></td><td>A plain text file, one lyric line per line. Overrides <code>--track</code> and needs no checkout. It has no line times, so no prior.</td></tr>
+          <tr><td><code>--window &lt;s&gt;</code></td><td>The line-time prior, ± seconds around each line's reference time. Default 3.0; <code>0</code> turns it off.</td></tr>
+          <tr><td><code>pron</code></td><td>Per track in <code>config.json</code>: <code>{"AGI": "ay gee i", "DJ": "dee jay"}</code>. A key matches a display token exactly, or case-folded without edge punctuation. A spelling of several sub-words gives the word one syllable span per sub-word. Digits are spelled out on their own ("1998" as nineteen ninety eight). No test track needed an entry.</td></tr>
+          <tr><td><code>handTimed</code></td><td>Per track in <code>config.json</code>. A listed track is <b>not aligned</b>: its inline lyrics were timed by hand, so the stage takes each word's <code>t</code> and <code>d</code> and the line grouping straight from the track file, verbatim (rest words dropped). The words carry no confidence, so the events file has no <code>lyrics.words.v</code>. Vocal onsets and <code>extras</code> are computed as usual, and <code>lyrics.source</code> reads <code>hand-timed (public/music/&lt;track&gt;.json)</code>. <code>export_app.py --lyrics</code> never writes a listed track.</td></tr>
+          <tr><td>Models</td><td>Downloaded on first use into <code>&lt;workspace&gt;/models/torch</code> (<code>TORCH_HOME</code>), about 2.4 GB for the two. Emissions are cached per model and channel in <code>out/&lt;slug&gt;/lyrics_em/</code> (4 to 8 MB per track, six files) and recomputed when <code>stems/vocals.wav</code> is newer.</td></tr>
+          <tr><td>No text, silent voice</td><td>A track without text still gets vocal onsets. A vocals stem below −40 dBFS, the <code>notes</code> gate, gets nothing. <code>raw_lyrics.json</code> is always written.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 id="lyr-method">Method</h3>
+      <div class="flow" role="list" aria-label="Lyric alignment steps">
+        <div class="node" role="listitem"><span class="n">Known text</span><span class="d">display tokens → pronunciation sub-words</span></div>
+        <span class="arrow" aria-hidden="true">→</span>
+        <div class="node" role="listitem"><span class="n">6 emissions</span><span class="d">2 CTC models × mono, left, right</span></div>
+        <span class="arrow" aria-hidden="true">→</span>
+        <div class="node hl" role="listitem"><span class="n">One Viterbi</span><span class="d">whole song, a garbage token between lines</span></div>
+        <span class="arrow" aria-hidden="true">→</span>
+        <div class="node" role="listitem"><span class="n">Refine</span><span class="d">starts and ends from the vocal signal</span></div>
+        <span class="arrow" aria-hidden="true">→</span>
+        <div class="node" role="listitem"><span class="n">Confidence</span><span class="d">agreement of 4 other alignments + posterior</span></div>
+      </div>
+      <div class="tbl"><table>
+        <thead><tr><th>Step</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td>Text</td><td><code>pron()</code> turns each display token into pronunciation sub-words (letters and inner apostrophes). A token with nothing pronounceable is left out of the alignment, and a line with no words left is left out too.</td></tr>
+          <tr><td>Emissions</td><td><code>MMS_FA</code> and <code>WAV2VEC2_ASR_LARGE_LV60K_960H</code>, 20 ms frames, computed in 20 s chunks with 3 s of context each side. Both vocabularies map onto one alphabet (blank, a to z, apostrophe; LV60K's word separator folds into blank). Each runs on the vocals stem as mono, left and right at 16 kHz: a double-tracked chorus is often panned, so one side is closer to a single voice.</td></tr>
+          <tr><td>Fusion</td><td>The six are averaged as <b>probabilities</b> (a mixture), not multiplied, so one model's confident "no" cannot veto another's "yes".</td></tr>
+          <tr><td>Alignment</td><td>One constrained Viterbi (numba) over the whole song. The target is <code>★ line0 ★ line1 ★ … ★</code>, and the garbage token ★ scores 1.5 nats below each frame's best symbol. It absorbs ad-libs, backing vocals and repeats the text does not list, while lyric letters win wherever they really match.</td></tr>
+          <tr><td>Refinement</td><td>Per sub-word, on 5 ms features (RMS, sibilance ratio, log-mel flux, pYIN f0), because CTC has known biases. <b>rest-onset</b>: after at least 50 ms of silence, start at the voice's re-entry, at most 0.5 s before the CTC start. <b>onset-snap</b>: snap to a flux peak just before the CTC start (a wider window for a vowel), rejecting peaks followed by frication, which are the previous word's last consonant. <b>fricative</b>: for s, sh, ch, z, f, th, j, x and h (not voiced "the, that, this…"), walk back to where the 4 to 10 kHz noise begins. Ends follow the voice: the first point after the CTC end where it stays 15 dB below the word's level for 60 ms, capped at the next word; a gap under 30 ms closes (legato). When the voice never drops that far, the end is capped at the CTC end + 1 s (<code>END_TAIL</code>) rather than running on to the next word: uncapped, one word on a test track lasted 27 s.</td></tr>
+          <tr><td>Confidence</td><td><code>0.4 + 0.4 × agreement + 0.2 × posterior</code> (the CTC posterior, saturating at 0.5). Agreement is the share of four other alignments (each model alone on mono; both models on the left channel alone, and on the right) whose raw start is within 60 ms. Written as <code>v</code> in <code>events.json</code> and <code>c</code> in Fantasynth's lyrics.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout warn"><span class="ct">rest-onset is capped at 0.5 s</span><p>The original rule had no limit. On one test track it moved word starts up to 3.2 s early, onto backing vocals and reverb tails that happened to re-enter first. A re-entry further back than 0.5 s is taken to be some other voice and left to onset-snap. Across the four test tracks, 3% of word starts were set by rest-onset, 38% by onset-snap, 10% by the fricative rule, and 48% stayed at the CTC start.</p></div>
+      <div class="callout warn"><span class="ct">Flux onsets were 31 ms late</span><p><code>librosa.onset.onset_strength</code> pads its output by lag + n_fft / (2 hop) frames, assuming its own default n_fft of 2048. The features use a 1024-point STFT, so every vocal flux onset came out about 31 ms late (a bug inherited from pdoom-video's <code>vocal_feats.py</code>). It now gets <code>n_fft=1024</code>. The fix moved every flux <code>vocalOnset</code> and every onset-snap word start; all numbers on this page are from after it.</p></div>
+
+      <h3 id="lyr-prior">The line-time prior</h3>
+      <p>Lyrics repeat. When a hook is sung more often than the text lists it, the unconstrained path is free to give a listed line to a different repeat. On one test track, without a prior, lines inside repeated hooks drifted up to 15 s onto other repeats of the same words. A track JSON usually has approximate line times already (from an LRC file, say), so every letter of line <i>i</i> must lie within that line's reference time ± 3 s (<code>--window</code>). The window never sets a time; the audio still does. With it, 71% of that track's line starts sat within 500 ms of its coarse line times (95% within 1 s), and the unlisted repeats landed in <code>extras</code>.</p>
+      <p>The stage also runs the free alignment and compares. A line whose free start is more than 1 s from the constrained one keeps the free start as <code>free</code> in <code>raw_lyrics.json</code>, for review, and the count is printed. "Moved" means the two paths disagree, not that the prior was wrong. If the windows admit no path at all, the stage warns and aligns without them. On the four test tracks the two paths disagreed on 17% to 100% of the lines. The extreme was a short text against a song with about 89 s of singing outside it, so the free path had many repeats to choose from.</p>
+      <p>The prior is <b>frozen</b> on the first run, in <code>out/&lt;slug&gt;/lyrics_prior.json</code> (track, text, times), and reused while the lyric text is unchanged. Otherwise, after <code>export_app.py --lyrics</code>, the track file holds the aligner's own output and would become its own prior, so a misplaced line could never move again. The stage warns when the track's lyrics already carry <code>c</code> and no frozen prior exists.</p>
+
+      <h3 id="lyr-onsets">Vocal onsets and extras</h3>
+      <p>Two by-products of the same vocal features, written whether or not the track has text.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Output</th><th>How</th><th>What it is for</th></tr></thead>
+        <tbody>
+          <tr><td><code>vocalOnsets</code> kind 0, flux</td><td>Log-mel flux peaks at least 90 ms apart, above 1.5× their 0.4 s mean plus 15% of the p99, on active voice only. Strength is the peak over the track's p95, clamped to 0.1..1.</td><td>Consonant and syllable attacks.</td></tr>
+          <tr><td><code>vocalOnsets</code> kind 1, pitch jump</td><td>The median-filtered pitch changes by more than 0.8 semitone across 80 ms while voiced, at least 100 ms apart, and no flux onset within 80 ms. Fixed strength 0.35.</td><td>Legato note changes: singing without an attack. 73 to 85% of them have no Basic Pitch vocal note start within 50 ms, so they add timing Basic Pitch lacks.</td></tr>
+          <tr><td><code>lyrics.extras</code></td><td>Vocal activity (RMS at a 5 ms hop, median-filtered, above −36 dB) that no word covers, with 100 ms of padding around each word, runs closer than 0.4 s merged, and only runs of 0.5 s or more kept.</td><td>Ad-libs, backing pads, chants and repeats the text does not list.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 id="lyr-sections">Lyric-informed sections</h3>
+      <p><code>assemble.py</code> uses the words to refine section starts, after the 8-bar phrase snap and before the energy splits and labels. A <b>vocal entry</b> is the first word of a line that starts at least 4 beats after the previous word ends, or the first line (<code>lyric_entries</code>). The pickup rule, from pdoom-video's <code>analyze.py</code>, maps an entry at beat <i>e</i> in bar <i>k</i> to a target bar (<code>entry_bar</code>): bar <i>k</i> when it falls in the first half of the bar (a long pickup belongs to its own bar), bar <i>k</i> + 1 when it falls in the second half (a short pickup leads into the next downbeat).</p>
+      <ul>
+        <li>An inner boundary exactly one bar from a target moves onto it (<code>apply_vocal_entries</code>), unless a section would drop under 2 bars.</li>
+        <li>The first and last boundary never move; a boundary already on a target, or moved once, stays.</li>
+        <li>A moved section's <code>labelSource</code> ends in <code>; lyrics entry bar N</code>. When an energy split cuts it, only the fragment that starts on the moved boundary carries the note.</li>
+      </ul>
+      <p>Across the four aligned test tracks it moved one boundary, by one bar onto a vocal pickup. Phrase-snapped EDM sections already sat on their vocal entries.</p>
+
+      <h3 id="lyr-measured">Measured</h3>
+      <p>Every word of all four test texts was placed. <code>report.py</code> judges the result against evidence of its own on <code>stems/vocals.wav</code>, never the pipeline's <code>vocalOnsets</code> (the aligner snaps starts to flux peaks, so those would vouch for themselves). The evidence is level rises (6 dB over 100 ms, dated at the half-rise) and spectral-flux peaks, because a legato word that tiles onto the previous one has no level rise. <b>P</b> is the share of word starts within 60 ms of either. Evidence this dense sits near most instants, so the report also gives the <b>chance</b> rate a start placed at random in the voice would get, and judges on <b>kappa</b> = (P − chance) / (1 − chance). <b>Entries</b> (a word 250 ms or more after the previous one) are scored against level rises alone, where chance is low. <b>Coverage</b> is the share of active voice inside a word or an extra.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Track</th><th>Verdict</th><th class="num">P</th><th class="num">Chance</th><th class="num">Kappa</th><th class="num">Median error</th><th class="num">Entries P</th><th class="num">Coverage</th></tr></thead>
+        <tbody>
+          <tr><td>Test track B</td><td><span class="pill mostly">mostly</span></td><td class="num">0.792</td><td class="num">0.62</td><td class="num">0.447</td><td class="num">−1.9 ms</td><td class="num">0.714</td><td class="num">0.99</td></tr>
+          <tr><td>Test track C</td><td><span class="pill mostly">mostly</span></td><td class="num">0.812</td><td class="num">0.61</td><td class="num">0.517</td><td class="num">−1.3 ms</td><td class="num">0.955</td><td class="num">0.99</td></tr>
+          <tr><td>Test track D</td><td><span class="pill solid">solid</span></td><td class="num">0.896</td><td class="num">0.68</td><td class="num">0.676</td><td class="num">+0.1 ms</td><td class="num">0.75</td><td class="num">0.98</td></tr>
+          <tr><td>Test track E</td><td><span class="pill mostly">mostly</span></td><td class="num">0.81</td><td class="num">0.71</td><td class="num">0.334</td><td class="num">−6.5 ms</td><td class="num">0.654</td><td class="num">0.97</td></tr>
+        </tbody>
+      </table></div>
+      <p class="c" style="font-size:14px">Verdicts: <b>solid</b> needs P ≥ 0.85, kappa ≥ 0.50 and coverage ≥ 90%; <b>mostly</b> 0.70 / 0.30 / 75%; any unordered, overlapping or zero-length word, or a silent stem, is <b>check</b>. The thresholds are provisional: they were set before the first real alignment, with Basic Pitch vocal note starts standing in for word starts. Median word confidence ranged from 0.61 to 0.89. The lowest, track B, is a heavily effected vocal: treat an alignment like that as provisional.</p>
+      <h4>Against WhisperX timings</h4>
+      <p>Track D already had word-level timings from a WhisperX transcription. Scored on the same words against the same independent evidence:</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Timings</th><th class="num">P</th><th class="num">Kappa</th><th class="num">Line entries on a vocal rise</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td>Forced alignment (this stage)</td><td class="num">0.896</td><td class="num">0.676</td><td class="num">0.75</td><td><span class="pill solid">solid</span></td></tr>
+          <tr><td>WhisperX</td><td class="num">0.775</td><td class="num">0.296</td><td class="num">0.459</td><td><span class="pill check">check</span></td></tr>
+        </tbody>
+      </table></div>
+      <p>Against WhisperX directly, 68% of the starts agree within 100 ms and 87% within 250 ms, with a median offset of −32 ms. The disagreements cluster in a repeated ad-lib passage.</p>
+    </section>
+
+    <section id="viewer">
+      <h2>The viewer</h2>
+      <p><code>viewer.html</code> is a single-page inspector for one analysed track. It draws the extracted data over a playhead and plays either the original audio or one of the synthesised listening checks, so you can judge a track by eye and ear before exporting it.</p>
+      <div class="mock" aria-label="Illustration of the viewer">
+        <div class="bar">
+          <span class="ctl">my-track ▾</span><span class="ctl">drums split ▾</span><span class="ctl">play</span><span class="ctl">zoom ━━●━━</span><span class="ctl">☑ follow</span>
+          <span class="inf">120 BPM · beat 0 at 0.5000s · fit p95 10.00 ms · kick 300 · snare 150 · hatOpen 280</span>
+        </div>
+        <svg viewBox="0 0 900 330" id="mock"></svg>
+      </div>
+      <div class="legend">
+        <div><i style="background:var(--build)"></i><span><b>Section band</b>: coloured by label (intro, build, drop, breakdown, groove, outro).</span></div>
+        <div><i style="background:var(--kick)"></i><span><b>Drum lanes</b>: kick, snare, toms, hatClosed, hatOpen, crash, ride. Bar height is velocity; a hollow bar is an off-grid hit.</span></div>
+        <div><i style="background:var(--bass)"></i><span><b>Piano roll</b>: notes per stem (bass, other, vocals, piano).</span></div>
+        <div><i style="background:var(--other)"></i><span><b>Curves</b>: RMS loudness of drums, bass, vocals and other.</span></div>
+        <div><i style="background:var(--good)"></i><span><b>Lyrics</b> (when present): words as boxes coloured by confidence, red low to green high, text inside when there is room; a white bar at each line start; a faint band for extras.</span></div>
+        <div><i style="background:var(--vocal)"></i><span><b>Vocal onsets</b>: ticks, height by strength; yellow for flux, pink for a pitch jump.</span></div>
+        <div><i style="background:#fff;border:1px solid var(--line)"></i><span><b>Playhead</b>: white line; the view follows it while playing.</span></div>
+      </div>
+      <h4>Controls</h4>
+      <ul>
+        <li><b>Track menu</b> or <code>?slug=&lt;slug&gt;</code> in the URL selects the analysed track. Any slug in <code>out/</code> works.</li>
+        <li><b>Audio menu</b> picks what plays: original, drums mix, drums split, grid clicks, bass split.</li>
+        <li><b>Click</b> anywhere to seek. <b>Space</b> plays and pauses. <b>Zoom</b> sets pixels per beat; <b>follow</b> keeps the playhead in view.</li>
+      </ul>
+      <h4>Listening checks</h4>
+      <div class="tbl"><table>
+        <thead><tr><th>File</th><th>What you hear</th><th>Use it to check</th></tr></thead>
+        <tbody>
+          <tr><td><code>check_grid.mp3</code></td><td>Original + metronome (high beep on downbeats) + a chime at each section start.</td><td>Tempo, bar phase, section boundaries.</td></tr>
+          <tr><td><code>check_drums_split.mp3</code></td><td>Left ear: original. Right ear: drums synthesised from the events.</td><td>Timing. On headphones, a flam between the ears is a misplaced hit.</td></tr>
+          <tr><td><code>check_drums_mix.mp3</code></td><td>Original ducked, synthesised drums on top.</td><td>Missing or extra hits, open versus closed hats.</td></tr>
+          <tr><td><code>check_bass_split.mp3</code></td><td>Left: original. Right: bass notes as a simple synth.</td><td>Note timing and pitch (draft quality).</td></tr>
+          <tr><td><code>check_lyrics_split.mp3</code></td><td>Left: the vocals stem. Right: a tick at every aligned word start: 2 kHz, 3 kHz and louder on a line start, 700 Hz for a word with confidence below 0.6, soft ticks on the syllables of a spelled word.</td><td>Word timing. A tick early or late against the word's first consonant is an error.</td></tr>
+          <tr><td><code>check_vocal_onsets_split.mp3</code></td><td>Left: the vocals stem. Right: 1.2 kHz for a flux onset, 600 Hz for a pitch jump.</td><td>Whether the onsets land on sung attacks and note changes.</td></tr>
+        </tbody>
+      </table></div>
+      <p>The two vocal checks are rendered only when the track has lyrics or vocal onsets. The audio menu does not list them yet; open <code>/out/&lt;slug&gt;/check_lyrics_split.mp3</code> from <code>serve.py</code> directly.</p>
+      <div class="callout"><span class="ct">Why serve.py</span><p>Python's built-in <code>http.server</code> can't answer range requests, and Chrome's <code>&lt;audio&gt;</code> stalls without them. <code>serve.py</code> is a small static server that adds them. It serves <code>viewer.html</code> from <code>audio-events/</code> and <code>/out/…</code> and <code>/audio/…</code> from the workspace. It binds to 127.0.0.1 only, on port 8765 by default (<code>serve.py 8766</code> picks another).</p></div>
+    </section>
+
+    <section id="format">
+      <h2>events.json format</h2>
+      <p>The canonical specification, with every field, is <a href="../CONTRACT.md">CONTRACT.md</a>. In short: time is measured in <b>beats on the fitted grid</b>, and beat 0 is a downbeat. To convert, <code>seconds = gridMarker + beat × 60 / bpm</code>. Arrays are columnar per lane, so they map straight onto typed arrays. The values below are invented.</p>
+<pre><code>{
+  "version": 2,
+  "tempo": [{ "beat": 0, "bpm": 120 }],
+  "gridMarker": 0.5,                 <span class="c">// seconds of beat 0</span>
+  "meter": 4,
+  "lengthBeats": 400.0,
+  "gridFit": { "residualMsMedian": 3.0, "shiftToKicksMs": -10.0, "hatSwing": { ... } },
+  "sections": [{ "startBeat": 0, "beats": 32, "label": "intro", "energy": 0.1, "labelSource": "rule(...)" }],
+  "drums": {
+    "kick":  { "b": [32, 33, ...], "v": [0.9, ...], "c": [1, ...], "swing": 0 },
+    "snare": { ... }, "toms": { ... }, "hatClosed": { ... }, "hatOpen": { ... }, "crash": { ... }, "ride": { ... }
+  },
+  "notes": { "bass": { "b": [...], "len": [...], "pitch": [...], "v": [...], "swing": 0 }, "other": ..., "vocals": ..., "piano": ..., "guitar": ... },
+  "curves": {
+    "samplesPerBeat": 24, "encoding": "u8-base64-p5p95",
+    "stems": { "drums": { "rms_db": "base64…", "centroid": "…", "onset": "…" }, "kick": { "rms_db": "…" }, ... }
+  },
+  "lyrics": {                        <span class="c">// only when the lyrics stage placed some words</span>
+    "lines":  { "b": [40.0, ...], "len": [6.0, ...], "text": ["la la la", ...] },
+    "words":  { "b": [...], "len": [...], "v": [0.8, ...], "w": ["la", ...], "line": [0, ...], "syl": [null, ...] },
+    "extras": { "b": [...], "len": [...] },
+    "source": "forced alignment (MMS_FA + wav2vec2 LV60K, CTC, mono/L/R mixture)"
+  },
+  "vocalOnsets": { "b": [...], "v": [...], "kind": [0, 1, ...] }   <span class="c">// only when the voice is not silent</span>
+}</code></pre>
+      <div class="tbl"><table>
+        <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>b</code></td><td>Beat position, snapped (straight or swung slot) for drums and notes; never snapped for lyrics and vocal onsets.</td></tr>
+          <tr><td><code>v</code></td><td>Velocity 0..1: ADTOF activation, or DrumSep level for DrumSep-only hits.</td></tr>
+          <tr><td><code>c</code></td><td>Confidence: share of detectors that agreed (0.33 means DrumSep alone).</td></tr>
+          <tr><td><code>swing</code></td><td>Beats added to the 2nd and 4th 16th of each beat, for that lane.</td></tr>
+          <tr><td><code>len</code>, <code>pitch</code></td><td>Note length in beats; MIDI pitch.</td></tr>
+          <tr><td><code>r</code>, <code>source</code>, <code>offGrid</code></td><td>QA only: snap residual in ms, provenance, off-grid count. Stripped from the exported copy.</td></tr>
+          <tr><td><code>lyrics</code>, <code>vocalOnsets</code></td><td>Additive, so <code>version</code> stays 2; each is omitted when empty. See CONTRACT.md for every sub-field.</td></tr>
+          <tr><td>curves</td><td>Values 0..255, normalised per track from the 5th to the 95th percentile. Sample <i>k</i> sits at beat <i>k</i>/24.</td></tr>
+          <tr><td><code>version</code></td><td><b>2</b>. Version 2 renamed the drum lane <code>tom</code> to <code>toms</code> and the curve stem <code>hh</code> to <code>hats</code>. A reader should accept the version 1 spellings as aliases.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="export">
+      <h2>Exporting to Fantasynth</h2>
+      <p><code>export_app.py</code> copies a track's events into a Fantasynth checkout and updates its track JSON with minimal text edits. It never re-serialises the file, so the lyrics and formatting stay byte for byte. A re-run changes nothing.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Option</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td><code>--slug</code>, <code>--track</code>, <code>--all</code></td><td>Which analysed track goes to which <code>public/music/&lt;track&gt;.json</code>. <code>--track</code> defaults to the slug's <code>appTrack</code>; <code>--all</code> is every slug in <code>config.json</code> with an <code>appTrack</code> (and not <code>"all": false</code>).</td></tr>
+          <tr><td><code>--app</code></td><td>The target checkout. Else <code>FANTASYNTH_APP</code>, else <code>app</code> in <code>config.json</code>, else an error.</td></tr>
+          <tr><td><code>--flac</code></td><td>Writes a 16-bit FLAC next to the MP3 (never overwrites), checks that it decodes bit-identically to <code>audio/&lt;slug&gt;.wav</code>, then switches the track's <code>url</code> to it.</td></tr>
+          <tr><td><code>--force-sections</code></td><td>Replaces existing sections. Without it, sections are only written when the track has none.</td></tr>
+          <tr><td><code>--lyrics</code></td><td>Replaces the track's inline <code>lyrics</code> with the aligned ones: <code>{"lines": [{"words": [{"t", "d", "w", "c"}]}]}</code>, grouped into the lines the text came in. <code>t</code> and <code>d</code> are seconds from the events file's own grid at full precision (3 decimals; <code>d</code> never below 0.001), <code>w</code> the token as the text had it, <code>c</code> the confidence (2 decimals). A gap of more than 2 s between lines (<code>REST_S</code>), and the tail to the song's end, becomes an empty line <code>{"t", "d", "w": ""}</code>: the rest convention of hand-made track files, since a line stays on screen until the next one starts. It refuses only when the <b>events file</b> has no <code>lyrics</code> block, before writing anything (with <code>--all</code> it skips those by name). A track file with no inline lyrics gets them appended, which is how a <code>--text</code> track gets its lyrics. A <code>handTimed</code> track is skipped, with or without <code>--all</code>, and the export says why. Seconds, not beats, so a later <code>gridMarker</code> edit does not move them.</td></tr>
+        </tbody>
+      </table></div>
+      <p>It writes <code>public/music/events/&lt;track&gt;.events.json</code> (about 0.5 MB, three-quarters of it curves). In the track JSON it only ever touches <code>bpm</code>, <code>gridMarker</code>, <code>events</code>, <code>url</code>, <code>sections</code> and, with <code>--lyrics</code>, <code>lyrics</code> (<code>MANAGED</code>), and it verifies every other key is unchanged. A missing track file is created from <code>title</code> and <code>file</code> in <code>config.json</code>, and added to <code>public/music/index.json</code> in title order. <code>lyrics</code> and <code>vocalOnsets</code> pass into the events file whole; an unknown field anywhere still stops the export.</p>
+    </section>
+
+    <section id="seek">
+      <h2>Seek accuracy</h2>
+      <p>After a seek, Chrome's <code>&lt;audio&gt;</code> reports the wrong position for MP3s: the file's encoder delay stops being compensated. <code>measure/</code> captures the output with an AudioWorklet and compares it with the known audio. In ms, positive means the reported position is later than the sound:</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Format</th><th class="num">From 0</th><th class="num">Seek 0.5 to 120 s</th><th class="num">Seek 150+ s</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td>MP3</td><td class="num">0.0</td><td class="num">+25.0</td><td class="num">−1.1</td><td>varies, can't be corrected</td></tr>
+          <tr><td>FLAC 16-bit</td><td class="num">0.0</td><td class="num">±0.1</td><td class="num">±0.1</td><td><b>exact</b> (chosen)</td></tr>
+          <tr><td>WAV 16-bit</td><td class="num">0.0</td><td class="num">±0.1</td><td class="num">±0.1</td><td>exact, 7.2× MP3 size</td></tr>
+          <tr><td>AAC (.m4a)</td><td class="num">±0.1</td><td class="num">±0.1</td><td class="num">±0.1</td><td>exact, but re-encodes</td></tr>
+          <tr><td>Ogg Opus</td><td class="num">−6.5</td><td class="num">0.0</td><td class="num">0.0</td><td>constant error from 0</td></tr>
+        </tbody>
+      </table></div>
+      <p>A FLAC decoded from the MP3 is bit-identical to what the events were extracted from, so nothing needs re-analysis. It costs 4.6× the MP3's size. All 44.1 kHz media also reads 1.8 ms ahead because Chrome resamples to 48 kHz; that's constant and harmless. The number belongs to Chromium's decoder, so re-run the measurement when Chrome updates. <code>measure/</code> has its own <code>package.json</code> for Playwright; the commands are in the README.</p>
+    </section>
+
+    <section id="tests">
+      <h2>Tests</h2>
+      <p>Unit tests (<code>unittest</code>) on synthetic fixtures: no audio, no models, no Fantasynth checkout. Run them from <code>audio-events/</code> with <code>&lt;ws&gt;\venv-main\Scripts\python.exe -m unittest discover -s tests</code>. <code>report.py</code> re-measures any analysed track on demand.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Test</th><th>Covers</th></tr></thead>
+        <tbody>
+          <tr><td><code>tests/test_report.py</code></td><td>The report card's measurements, including degenerate and empty inputs; the lyrics check (chance, kappa, entries, coverage, order and overlap) and the vocal onset measurement.</td></tr>
+          <tr><td><code>tests/test_lyrics_align.py</code></td><td>The aligner on synthetic emissions and features: the pronunciation table and numbers sung as words; words landing on their frames with junk going to ★, the numba and Python kernels agreeing, sub-word spans, repeated letters needing a blank, unpronounceable tokens skipped, text longer than the audio refused; refinement keeping order and tiling legato, the rest-onset cap, extras, a pitch jump with no attack found as an onset, confidence from agreement.</td></tr>
+          <tr><td><code>tests/test_assemble.py</code></td><td>The <code>lyrics</code> block in beats from the shifted grid, legato words still tiling after rounding, non-ASCII lyrics surviving, never snapped, omitted when empty; vocal entries, the pickup rule both ways, two bars away not moving, first and last edges fixed, no section under two bars, the <code>labelSource</code> note.</td></tr>
+          <tr><td><code>tests/test_export_app.py</code></td><td><code>lyrics</code> and <code>vocalOnsets</code> passed whole, absent blocks absent, unknown fields stopping the export; the lyric format's seconds, grouping and rounding from the events grid at full precision; the splice into CRLF and LF track files, re-runs as no-ops, a track without lyrics getting them appended, other edits unable to touch <code>lyrics</code>; refusal before anything is written.</td></tr>
+          <tr><td><code>tests/test_config.py</code></td><td><code>config.json</code> validation (unknown keys, wrong types, <code>_</code> comments), the music folder order, <code>--all</code> from the config, the checkout resolution order and its errors (no fall-through), and the <code>lyrics</code> stage exiting with nothing written when a named track file or the checkout is missing.</td></tr>
+          <tr><td><code>tests/test_hand_timed.py</code></td><td>A hand-timed track: its times and grouping taken verbatim, no confidence, onsets and extras still computed, an unlisted track still aligned; <code>assemble</code> refusing a mix of aligned and hand-timed words; <code>export_app.py --lyrics</code> skipping it, also under <code>--all</code>.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="limits">
+      <h2>Known limitations</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Issue</th><th>Impact</th></tr></thead>
+        <tbody>
+          <tr><td>One tempo, one meter and one bar phase per track.</td><td>A track edited to drop beats can't be expressed. One test track loses 2 beats in its breakdown: its second half has the right beats and hits, but bar lines and sections 2 beats off, and it runs about 25 ms early against the grid.</td></tr>
+          <tr><td>Notes are unverified; sections are heuristics.</td><td>Treat both as drafts to correct.</td></tr>
+          <tr><td>Lyric alignment has no hand-correction pass.</td><td>pdoom-video corrected 17 words by hand, each with its acoustic evidence. Here the low-confidence words (<code>v</code> &lt; 0.6) are listed, not reviewed.</td></tr>
+          <tr><td>The line-time prior is only as good as the track's line times.</td><td><code>--text</code> has none, so a text-file track aligns freely and a repeated hook can land on another repeat. Check the lines that carry <code>free</code>. Deleting <code>lyrics_prior.json</code> after an export would refreeze the prior from the aligner's own output.</td></tr>
+          <tr><td>The lyrics thresholds are provisional, and chance is high (0.61 to 0.71).</td><td>Read kappa, not P.</td></tr>
+          <tr><td>Syllable spans exist only for spelled tokens.</td><td>An acronym in <code>pron</code> or a number gets <code>syl</code>; an ordinary word never does.</td></tr>
+          <tr><td>The vocal listening checks are not in the viewer's audio menu.</td><td>Open them by URL from <code>serve.py</code>.</td></tr>
+          <tr><td>Setup is Windows-only.</td><td><code>setup.ps1</code> and the venv paths assume Windows. The stage scripts are plain Python.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="gotchas">
+      <h2>Gotchas</h2>
+      <div class="callout warn"><span class="ct">pip can swap torch for a CPU build</span><p>A bare <code>pip install</code> in <code>venv-main</code> once replaced CUDA torch with torch 2.14 CPU through a torchvision dependency, silently. Install with <code>-c audio-events\constraints-main.txt --extra-index-url https://download.pytorch.org/whl/cu128</code>, and check <code>torch.cuda.is_available()</code> after any install.</p></div>
+      <div class="callout warn"><span class="ct">Hidden tabs don't load media</span><p>Chrome defers <code>&lt;audio&gt;</code> loading in hidden tabs, including automation tabs (<code>visibilityState: hidden</code>). Open the viewer in a normal tab.</p></div>
+      <div class="callout warn"><span class="ct">Round the ends, not the lengths</span><p>Rounding a word's <code>b</code> and <code>len</code> separately broke the tiling of legato words: two words that touched in seconds came out one rounding step apart, or overlapping. <code>len</code> is derived from the rounded end minus the rounded start, in seconds in <code>lyrics.py</code> and in beats in <code>assemble.py</code>.</p></div>
+      <div class="callout warn"><span class="ct">Read JSON as UTF-8</span><p>Reading a UTF-8 track file with the Windows default code page turned a non-ASCII character in a lyric into mojibake. Every JSON read on the lyric path passes <code>encoding="utf-8"</code>.</p></div>
+      <div class="callout warn"><span class="ct">onnxruntime has no Blackwell kernels</span><p>ONNX separators silently fall back to CPU on a Blackwell GPU (tested on an RTX 5090). The pipeline uses the PyTorch-native models.</p></div>
+    </section>
+
+    <section id="licences">
+      <h2>Licences</h2>
+      <p>The MIT licence of this repo covers its code only. The models the pipeline downloads at runtime carry their own terms: several are non-commercial (CC BY-NC, CC BY-NC-SA), one package has no licence, and some weights state none. <b>The default pipeline is not suitable for commercial use.</b> Whether a model's terms carry over to the generated JSON is unsettled. The per-model table is in the README's <a href="../README.md#model-weights-and-licences">Model weights and licences</a>.</p>
+    </section>
+
+    <footer>fantasynth-tools · audio-events/docs/index.html · <a href="../README.md">README.md</a> · <a href="../CONTRACT.md">CONTRACT.md</a></footer>
+  </main>
+</div>
+
+<script>
+(() => {
+  const svg = document.getElementById('mock')
+  if (!svg) return
+  const NS = 'http://www.w3.org/2000/svg'
+  const el = (n, a, p = svg) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e }
+  const tx = (x, y, s, fill = '#8a8d96', size = 10) => { const t = el('text', { x, y, fill, 'font-family': 'IBM Plex Mono, monospace', 'font-size': size }); t.textContent = s; return t }
+  let seed = 3
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+  const W = 900, x0 = 0, pxb = 18, beats = 50
+  const X = b => x0 + b * pxb
+  // bar lines
+  for (let b = 0; b <= beats; b++) el('rect', { x: X(b), y: 18, width: 1, height: 312, fill: b % 4 ? '#191b20' : '#2a2d35' })
+  for (let b = 0; b <= beats; b += 16) tx(X(b) + 3, 12, String(b / 4))
+  // sections
+  const secs = [['breakdown', 0, 12, '#1f5f7a'], ['build', 12, 16, '#8a6d1f'], ['drop', 16, 50, '#a3283a']]
+  for (const [n, a, b, c] of secs) { el('rect', { x: X(a) + 1, y: 20, width: X(b) - X(a) - 2, height: 18, fill: c }); tx(X(a) + 5, 33, n, '#fff', 11) }
+  // drum lanes
+  const lanes = [['kick', '#ff5a5a', b => b >= 16 && b % 1 === 0], ['snare', '#ffb03a', b => (b >= 12 && b < 16 && b % 0.25 === 0) || (b >= 16 && b % 2 === 1)], ['toms', '#c99a6a', () => false], ['hatClosed', '#6ad0ff', b => b >= 16 && b % 1 === 0.25 && b % 2 < 1], ['hatOpen', '#3a8dff', b => b >= 16 && b % 1 === 0.5], ['crash', '#e46bff', b => b === 16 || b === 32], ['ride', '#b39bff', () => false]]
+  lanes.forEach(([name, c, on], i) => {
+    const y = 44 + i * 16
+    tx(4, y + 11, name)
+    for (let b = 0; b < beats; b += 0.25) if (on(b)) { const h = 5 + 9 * (0.6 + rnd() * 0.4); el('rect', { x: X(b), y: y + (16 - h) / 2, width: Math.max(2, pxb / 4 - 1), height: h, fill: c }) }
+  })
+  // piano roll
+  const ry = 162
+  el('rect', { x: 0, y: ry, width: W, height: 88, fill: '#121418' })
+  tx(4, ry + 12, 'notes: bass, other, vocals')
+  for (let b = 16; b < beats; b += 0.5) if (rnd() > 0.3) el('rect', { x: X(b), y: ry + 60 + Math.floor(rnd() * 3) * 6, width: pxb * 0.45, height: 4, fill: '#5aff9a' })
+  for (let b = 0; b < beats; b += 1) if (rnd() > 0.45) el('rect', { x: X(b), y: ry + 18 + Math.floor(rnd() * 6) * 5, width: pxb * (0.5 + rnd()), height: 3, fill: '#7ab8ff' })
+  for (let b = 2; b < beats; b += 2) if (rnd() > 0.5) el('rect', { x: X(b), y: ry + 22 + Math.floor(rnd() * 4) * 4, width: pxb * 1.2, height: 3, fill: '#ffd75a' })
+  // curves
+  const curve = (y, c, fn, name) => {
+    let d = ''
+    for (let i = 0; i <= beats * 6; i++) { const b = i / 6; d += (i ? 'L' : 'M') + X(b).toFixed(1) + ' ' + (y + 30 - 26 * fn(b)).toFixed(1) }
+    el('path', { d, fill: 'none', stroke: c, 'stroke-width': 1.3 })
+    tx(4, y + 11, name)
+  }
+  curve(254, '#ff7a5a', b => b < 16 ? 0.15 + (b >= 12 ? (b - 12) / 8 : 0) : 0.55 + 0.4 * Math.exp(-(b % 1) * 4), 'drums rms')
+  curve(290, '#5aff9a', b => b < 16 ? 0.1 : 0.2 + 0.7 * (1 - Math.exp(-(b % 1) * 5)), 'bass rms')
+  // playhead
+  el('rect', { x: X(21.3), y: 18, width: 1.5, height: 312, fill: '#fff' })
+})()
+</script>
+
+</body>
+</html>
