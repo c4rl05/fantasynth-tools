@@ -7,10 +7,10 @@ what it reads. Each tool lives in its own folder, with its own README.
 
 ## Tools
 
-- [audio-events](audio-events/README.md). A finished track goes in. A timed list of its
-  musical events comes out: beat grid, sections, drum hits, notes, energy curves, sung words. [Write-up](https://fantasynth.com/tools/audio-events/).
+- [music-events](music-events/README.md). A finished track goes in. A timed list of its
+  musical events comes out: beat grid, sections, drum hits, notes, energy curves, sung words. [Write-up](https://fantasynth.com/tools/music-events/).
 
-  ![The audio-events viewer](audio-events/docs/viewer.png)
+  ![The music-events viewer](music-events/docs/viewer.png)
 
 ## Licence
 
@@ -20,7 +20,7 @@ The MIT licence covers this code only. Some tools download third-party models at
 under their own terms. Several are non-commercial, or state no licence. Read each tool's
 model licence notes before you use its output:
 
-- audio-events: [Model weights and licences](audio-events/README.md#model-weights-and-licences)
+- music-events: [Model weights and licences](music-events/README.md#model-weights-and-licences)
 
 Code ported from other projects is credited in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 

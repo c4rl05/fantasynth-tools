@@ -3,19 +3,19 @@
 This file lists code from other projects that has been ported into this repo, with the
 notices their licences require. Models and pip dependencies that are only downloaded or
 installed at runtime are not part of this repo; their licences are listed in each tool's
-README (for audio-events: [Model weights and licences](audio-events/README.md#model-weights-and-licences)).
+README (for music-events: [Model weights and licences](music-events/README.md#model-weights-and-licences)).
 
 ## pdoom-video
 
 Source: https://github.com/mexicat/pdoom-video
 
-The lyric alignment in `audio-events` is a port of pdoom-video's analysis code:
+The lyric alignment in `music-events` is a port of pdoom-video's analysis code:
 
 | File in this repo | Ported from |
 |---|---|
-| `audio-events/scripts/lyrics_align.py` | `analysis/ctcalign.py` and `analysis/align.py`: the CTC emission fusion, the constrained Viterbi with a garbage token, the start refinement (rest-onset, onset-snap, fricative walk-back) and the agreement-based confidence. The vocal-signal features (RMS, sibilance, log-mel flux, pitch) follow `analysis/vocal_feats.py` |
-| `audio-events/scripts/lyrics.py` | the chunked CTC emission computation (20 s chunks with 3 s of context each side, 20 ms frames), from `analysis/ctc_emissions.py` |
-| `audio-events/scripts/assemble.py` | the pickup rule that maps a vocal entry to a bar (`entry_bar`), from `analysis/analyze.py` |
+| `music-events/scripts/lyrics_align.py` | `analysis/ctcalign.py` and `analysis/align.py`: the CTC emission fusion, the constrained Viterbi with a garbage token, the start refinement (rest-onset, onset-snap, fricative walk-back) and the agreement-based confidence. The vocal-signal features (RMS, sibilance, log-mel flux, pitch) follow `analysis/vocal_feats.py` |
+| `music-events/scripts/lyrics.py` | the chunked CTC emission computation (20 s chunks with 3 s of context each side, 20 ms frames), from `analysis/ctc_emissions.py` |
+| `music-events/scripts/assemble.py` | the pickup rule that maps a vocal entry to a bar (`entry_bar`), from `analysis/analyze.py` |
 
 The port changes the method in places: the rest-onset rule is capped at 0.5 s, the flux
 onset padding is corrected (`n_fft=1024`), and a line-time prior is added. pdoom-video's
